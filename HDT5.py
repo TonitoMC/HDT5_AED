@@ -39,25 +39,29 @@ class Process:
         print(f"Nuevo proceso {self.id} llega al sistema en {self.env.now}.")
 
     def new(self):
+        print(f"Proceso {self.id} en espera de memoria en {self.env.now}.")
         yield self.computer.RAM.get(self.ram_required)
         print(f"Proceso {self.id} obtiene {self.ram_required} de memoria en {self.env.now}. Hay {self.computer.RAM.level} disponibles")
         self.env.process(self.ready())
 
     def ready(self):
-        print(f"Proceso {self.id} en espera del CPU {self.env.now}")
-        with self.computer.CPU.request() as req:
-            yield req
-            if self.instructions > 0:
+        if self.instructions > 0:
+            print(f"Proceso {self.id} en espera del CPU {self.env.now}")
+            with self.computer.CPU.request() as req:
+                yield req
                 print(f"Proceso {self.id} utilizando el CPU en {self.env.now}")
                 yield from self.computer.execute(self)
-            else:
-                self.terminate()
+        else:
+            self.terminate()
 
     def terminate(self):
         print(f"Proceso {self.id} terminado en {self.env.now}")
-        self.computer.RAM.put(self.ram_required)
+        self.release_ram()
         res.append(env.now - self.start)
 
+    def release_ram(self):
+        yield self.env.timeout(0)  # This line is added to ensure the process yields to allow other events to be processed
+        yield self.computer.RAM.put(self.ram_required)
 def main(env, num_processes):
     computer = Computer(env, 100, 1, 3)
     for i in range(num_processes):
