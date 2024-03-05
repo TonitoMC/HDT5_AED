@@ -24,10 +24,13 @@ class Computer:
                     yield self.env.timeout(1)
                     print(f"Proceso {process.id} deja el CPU en {self.env.now}. Hay {process.instructions} instrucciones pendientes.")
                     self.env.process(process.ready())
-                    return  # Exit the execute method if interrupted by I/O
-        print(f"Proceso {process.id} terminado en {self.env.now}")
-        self.RAM.put(process.ram_required)
-        res.append(self.env.now - process.start)
+            else:
+                print(f"Proceso {process.id} deja el CPU en {self.env.now}. Hay {process.instructions} instrucciones pendientes.")
+                self.env.process(process.ready())
+        else:
+            print(f"Proceso {process.id} terminado en {self.env.now}")
+            self.RAM.put(process.ram_required)
+            res.append(self.env.now - process.start)
 class Process:
     def __init__(self, env, id, computer):
         self.id = id
@@ -53,7 +56,7 @@ class Process:
             yield from self.computer.execute(self)
 
 def main(env, num_processes):
-    computer = Computer(env, 100, 1, 3)
+    computer = Computer(env, 100, 2, 3)
     for i in range(num_processes):
         yield env.timeout(random.expovariate(1.0))
         # Se crea un nuevo proceso
