@@ -15,18 +15,19 @@ class Computer:
 
     def execute(self, process):
         instructions_to_execute = min(process.instructions, self.CPU_SPEED)
-        yield self.env.timeout(self.CPU_SPEED / instructions_to_execute)
+        yield self.env.timeout(instructions_to_execute / self.CPU_SPEED)
         process.instructions -= instructions_to_execute
-        random_io = random.randint(1, 2)
-        if random_io == 1:
-            print(f"Proceso {process.id} interrumpido por proceso I/O en {self.env.now}")
-            yield self.env.timeout(1)
-            # Una vez que la I/O ha terminado, el proceso vuelve a estar en estado "Ready"
-            print(f"Proceso {process.id} deja el CPU en {env.now}. Hay {process.instructions} instrucciones pendientes.")
-            self.env.process(process.ready())
-        else:
-            print(f"Proceso {process.id} deja el CPU en {env.now}. Hay {process.instructions} instrucciones pendientes.")
-
+        if process.instructions > 0:
+            random_io = random.randint(1, 2)
+            if random_io == 1:
+                    print(f"Proceso {process.id} interrumpido por proceso I/O en {self.env.now}")
+                    yield self.env.timeout(1)
+                    print(f"Proceso {process.id} deja el CPU en {self.env.now}. Hay {process.instructions} instrucciones pendientes.")
+                    self.env.process(process.ready())
+                    return  # Exit the execute method if interrupted by I/O
+        print(f"Proceso {process.id} terminado en {self.env.now}")
+        self.RAM.put(process.ram_required)
+        res.append(self.env.now - process.start)
 class Process:
     def __init__(self, env, id, computer):
         self.id = id
@@ -45,23 +46,12 @@ class Process:
         self.env.process(self.ready())
 
     def ready(self):
-        if self.instructions > 0:
-            print(f"Proceso {self.id} en espera del CPU {self.env.now}")
-            with self.computer.CPU.request() as req:
-                yield req
-                print(f"Proceso {self.id} utilizando el CPU en {self.env.now}")
-                yield from self.computer.execute(self)
-        else:
-            self.terminate()
+        print(f"Proceso {self.id} en espera del CPU {self.env.now}")
+        with self.computer.CPU.request() as req:
+            yield req
+            print(f"Proceso {self.id} utilizando el CPU en {self.env.now}")
+            yield from self.computer.execute(self)
 
-    def terminate(self):
-        print(f"Proceso {self.id} terminado en {self.env.now}")
-        self.release_ram()
-        res.append(env.now - self.start)
-
-    def release_ram(self):
-        yield self.env.timeout(0)  # This line is added to ensure the process yields to allow other events to be processed
-        yield self.computer.RAM.put(self.ram_required)
 def main(env, num_processes):
     computer = Computer(env, 100, 1, 3)
     for i in range(num_processes):
